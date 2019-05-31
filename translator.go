@@ -4,13 +4,19 @@ import (
 	"strings"
 )
 
-// TranslateWord translates a single word to gophers' language
+// TranslateWord translates a single word to gophers' language.
 func TranslateWord(word string) string {
+
+	if len(word) == 0 {
+		return ""
+	}
 
 	// don't confuse gophers with shortened words
 	if strings.ContainsAny(word, "’'") {
 		return ""
 	}
+
+	word = strings.ToLower(word)
 
 	var builder strings.Builder
 	// handle 2.
@@ -45,6 +51,31 @@ func TranslateWord(word string) string {
 	builder.WriteString(word[vowelIdx:len(word)])
 	builder.WriteString(word[0:vowelIdx])
 	builder.WriteString("ogo")
-
 	return builder.String()
+}
+
+// TranslateSentence translates a whole sentence in gopher
+func TranslateSentence(sentence string) string {
+
+	english := strings.Split(sentence, " ")
+	var gopher []string
+
+	for _, word := range english {
+
+		var sign string
+		if strings.LastIndexAny(word, ",.?!") == len(word)-1 {
+			ln := len(word)
+			sign = word[ln-1 : ln]
+			word = word[:ln-1]
+		}
+		translated := TranslateWord(word)
+		if len(translated) > 0 {
+			if len(sign) > 0 {
+				translated += sign
+			}
+			gopher = append(gopher, translated)
+		}
+	}
+
+	return strings.Join(gopher, " ")
 }
