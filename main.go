@@ -10,8 +10,13 @@ import (
 )
 
 var port = flag.Int("port", 8080, "")
+var history History
 
 func handleWord(rw http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(rw, "", http.StatusMethodNotAllowed)
+		return
+	}
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
@@ -34,6 +39,7 @@ func handleWord(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	gopher = TranslateWord(english)
+	history.Store(english, gopher)
 
 	data, err := json.Marshal(struct {
 		Word *string `json:"gopher-word"`
@@ -53,6 +59,10 @@ func handleWord(rw http.ResponseWriter, req *http.Request) {
 }
 
 func handleSentence(rw http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(rw, "", http.StatusMethodNotAllowed)
+		return
+	}
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
@@ -76,6 +86,7 @@ func handleSentence(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	gopher = TranslateSentence(english)
+	history.Store(english, gopher)
 
 	data, err := json.Marshal(struct {
 		Word *string `json:"gopher-sentence"`
@@ -94,12 +105,32 @@ func handleSentence(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func handleHistory(rw http.ResponseWriter, req *http.Request) {
+	if req.Method != "GET" {
+		http.Error(rw, "", http.StatusMethodNotAllowed)
+		return
+	}
+
+	data, err := history.ToJSON()
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+
+	}
+	_, err = rw.Write(data)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func main() {
+
 	flag.Parse()
 
 	http.HandleFunc("/word", handleWord)
 	http.HandleFunc("/sentence", handleSentence)
-	http.HandleFunc("/history”", handleWord)
+	http.HandleFunc("/history", handleHistory)
 
 	log.Println("Start server on ", *port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))

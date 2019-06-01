@@ -3,36 +3,76 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
+	"sync"
 )
 
-type Entry struct {
-	En string
-	Gf string
-}
+type Records map[string]string
 
-func (e *Entry) MarshalJSON() ([]byte, error) {
-
-	str := fmt.Sprintf("{\"%s\":\"%s\"}", e.En, e.Gf)
-	b := []byte(str)
-	return json.RawMessage(b), nil
-}
-
+// History is a data structure for safely storing translations
 type History struct {
-	Words []Entry `json:"history"`
+	data  Records
+	guard sync.Mutex
 }
 
-func (h *History) Remember(en string, gf string) {
-	h.Words = append(h.Words, Entry{En: en, Gf: gf})
+// Store is a method for saving a translation
+func (h *History) Store(en string, gf string) {
+	h.guard.Lock()
+	defer h.guard.Unlock()
+	if h.data == nil {
+		h.data = make(Records, 0)
+	}
+	h.data[en] = gf
 }
 
-func (h History) Len() int {
-	return len(h.Words)
+// GetData returns a copy of the stored translations
+func (h *History) GetData() Records {
+	h.guard.Lock()
+	defer h.guard.Unlock()
+	cp := make(Records, len(h.data))
+	for key, val := range h.data {
+		cp[key] = val
+	}
+	return cp
 }
-func (h History) Less(i, j int) bool {
-	return strings.Compare(h.Words[i].En, h.Words[j].En) < 0
+
+type entry struct {
+	English string
+	Gopher  string
 }
-func (h History) Swap(i, j int) {
-	h.Words[i].En, h.Words[j].En = h.Words[j].En, h.Words[i].En
-	h.Words[i].Gf, h.Words[j].Gf = h.Words[j].Gf, h.Words[i].Gf
+
+func (e *entry) MarshalJSON() ([]byte, error) {
+	str := fmt.Sprintf("{\"%s\":\"%s\"}", e.English, e.Gopher)
+	return []byte(str), nil
+}
+
+type byAlphabet []string
+
+func (a byAlphabet) Len() int           { return len(a) }
+func (a byAlphabet) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byAlphabet) Less(i, j int) bool { return strings.Compare(a[i], a[j]) < 0 }
+
+// ToJSON returns json encoding of History object
+func (h *History) ToJSON() ([]byte, error) {
+	data := h.GetData()
+
+	keys := make([]string, 0)
+	for key := range data {
+		keys = append(keys, key)
+	}
+
+	sort.Sort(byAlphabet(keys))
+
+	sortedData := make([]entry, len(keys))
+
+	for idx, key := range keys {
+		sortedData[idx] = entry{English: key, Gopher: data[key]}
+	}
+
+	return json.Marshal(struct {
+		History []entry `json:"history"`
+	}{
+		History: sortedData,
+	})
 }
