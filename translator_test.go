@@ -20,13 +20,12 @@ func TestTranslateWord(t *testing.T) {
 	}
 
 	for _, word := range words {
-		translated := TranslateWord(word.english)
+		translated, err := TranslateWord(word.english)
 
 		if word.gopher != translated {
 			t.Errorf("Expected '%s' in gopher, but got '%s'", word.gopher, translated)
 		}
 	}
-
 }
 
 func TestTranslateSentence(t *testing.T) {
@@ -45,7 +44,7 @@ func TestTranslateSentence(t *testing.T) {
 	}
 
 	for _, te := range td {
-		translated := TranslateSentence(te.english)
+		translated, err := TranslateSentence(te.english)
 
 		if te.gopher != translated {
 			t.Errorf("Expected '%s' in gopher, but got '%s'", te.gopher, translated)

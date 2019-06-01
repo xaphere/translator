@@ -38,7 +38,7 @@ func handleWord(rw http.ResponseWriter, req *http.Request) {
 		http.Error(rw, "No english word provided.", http.StatusBadRequest)
 		return
 	}
-	gopher = TranslateWord(english)
+	gopher, err = TranslateWord(english)
 	history.Store(english, gopher)
 
 	data, err := json.Marshal(struct {
@@ -85,7 +85,7 @@ func handleSentence(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	gopher = TranslateSentence(english)
+	gopher, err = TranslateSentence(english)
 	history.Store(english, gopher)
 
 	data, err := json.Marshal(struct {
@@ -125,7 +125,6 @@ func handleHistory(rw http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-
 	flag.Parse()
 
 	http.HandleFunc("/word", handleWord)

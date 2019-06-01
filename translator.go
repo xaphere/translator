@@ -4,16 +4,30 @@ import (
 	"strings"
 )
 
-// TranslateWord translates a single word to gophers' language.
-func TranslateWord(word string) string {
+// Error codes for translation errors
+const (
+	ErrConfusedGopher = 100 // word for translation is shortend
+	ErrInvalidWord    = 101
+)
 
+// TransError is a transalation error stucture
+type TransError struct {
+	Err  string
+	Code int
+}
+
+func (e *TransError) Error() string {
+	return e.Err
+}
+
+// TranslateWord translates a single word to gophers' language.
+func TranslateWord(word string) (string, error) {
 	if len(word) == 0 {
-		return ""
+		return "", &TransError{Code: ErrInvalidWord, Err: "No word was provided"}
 	}
 
-	// don't confuse gophers with shortened words
 	if strings.ContainsAny(word, "’'") {
-		return ""
+		return "", &TransError{Code: ErrConfusedGopher, Err: "Gophers can not understand shortened words"}
 	}
 
 	word = strings.ToLower(word)
@@ -23,7 +37,7 @@ func TranslateWord(word string) string {
 	if strings.Index(word, "xr") == 0 {
 		builder.WriteString("ge")
 		builder.WriteString(word)
-		return builder.String()
+		return builder.String(), nil
 	}
 
 	vowelIdx := strings.IndexAny(word, "aeiou")
@@ -34,7 +48,7 @@ func TranslateWord(word string) string {
 	if vowelIdx == 0 {
 		builder.WriteString("g")
 		builder.WriteString(word)
-		return builder.String()
+		return builder.String(), nil
 	}
 
 	// handle 4.
@@ -51,31 +65,37 @@ func TranslateWord(word string) string {
 	builder.WriteString(word[vowelIdx:len(word)])
 	builder.WriteString(word[0:vowelIdx])
 	builder.WriteString("ogo")
-	return builder.String()
+	return builder.String(), nil
+}
+
+func extractSign(word string) (string, string) {
+	var sign string
+	if strings.LastIndexAny(word, ",.?!") == len(word)-1 {
+		ln := len(word)
+		sign = word[ln-1 : ln]
+		word = word[:ln-1]
+	}
+	return word, sign
 }
 
 // TranslateSentence translates a whole sentence in gopher
-func TranslateSentence(sentence string) string {
-
+func TranslateSentence(sentence string) (string, error) {
 	english := strings.Split(sentence, " ")
 	var gopher []string
 
 	for _, word := range english {
-
-		var sign string
-		if strings.LastIndexAny(word, ",.?!") == len(word)-1 {
-			ln := len(word)
-			sign = word[ln-1 : ln]
-			word = word[:ln-1]
-		}
-		translated := TranslateWord(word)
-		if len(translated) > 0 {
-			if len(sign) > 0 {
-				translated += sign
+		word, sign := extractSign(word)
+		translated, err := TranslateWord(word)
+		if e, ok := err.(*TransError); ok {
+			if e.Code == ErrConfusedGopher {
+				continue
+			} else {
+				return "", err
 			}
-			gopher = append(gopher, translated)
 		}
+
+		gopher = append(gopher, translated+sign)
 	}
 
-	return strings.Join(gopher, " ")
+	return strings.Join(gopher, " "), nil
 }
