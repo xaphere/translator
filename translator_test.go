@@ -33,14 +33,16 @@ func TestTranslateSentence(t *testing.T) {
 	td := []struct {
 		english string
 		gopher  string
-	}{{
-		english: "The quick brown fox jumps, over the lazy dog.",
-		gopher:  "ethogo uickqogo ownbrogo oxfogo umpsjogo, gover ethogo azylogo ogdogo.",
-	},
+	}{
+		{
+			english: "The quick brown fox jumps, over the lazy dog.",
+			gopher:  "ethogo uickqogo ownbrogo oxfogo umpsjogo, gover ethogo azylogo ogdogo.",
+		},
 		{
 			english: "He's good, but not that good.",
 			gopher:  "oodgogo, utbogo otnogo atthogo oodgogo.",
-		}}
+		},
+	}
 
 	for _, te := range td {
 		translated := TranslateSentence(te.english)
