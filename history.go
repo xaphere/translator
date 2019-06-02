@@ -13,7 +13,7 @@ type Records map[string]string
 // History is a data structure for safely storing translations
 type History struct {
 	data  Records
-	guard sync.Mutex
+	guard sync.RWMutex
 }
 
 // Store is a method for saving a translation
@@ -28,16 +28,16 @@ func (h *History) Store(en string, gf string) {
 
 // Load is a method that returns a translation if stored already or false if it's not
 func (h *History) Load(en string) (string, bool) {
-	h.guard.Lock()
-	defer h.guard.Unlock()
+	h.guard.RLock()
+	defer h.guard.RUnlock()
 	str, ok := h.data[en]
 	return str, ok
 }
 
 // GetData returns a copy of the stored translations
 func (h *History) GetData() Records {
-	h.guard.Lock()
-	defer h.guard.Unlock()
+	h.guard.RLock()
+	defer h.guard.RUnlock()
 	cp := make(Records, len(h.data))
 	for key, val := range h.data {
 		cp[key] = val
