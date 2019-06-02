@@ -8,32 +8,27 @@ import (
 	"net/http"
 )
 
-func handleWord(rw http.ResponseWriter, req *http.Request) *serverError {
-
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		return &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
-	}
+func handleWord(body []byte) ([]byte, *serverError) {
 
 	var english, gopher string
-	err = json.Unmarshal(body, &struct {
+	err := json.Unmarshal(body, &struct {
 		Word *string `json:"english-word"`
 	}{
 		Word: &english,
 	})
 	if err != nil {
-		return &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
+		return nil, &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
 	}
 
 	if len(english) == 0 {
-		return &serverError{Error: nil, Msg: "No english word provided.", Code: http.StatusBadRequest}
+		return nil, &serverError{Error: nil, Msg: "No english word provided.", Code: http.StatusBadRequest}
 	}
 
 	var ok bool
 	if gopher, ok = history.Load(english); !ok {
 		gopher, err = TranslateWord(english)
 		if err != nil {
-			return &serverError{Error: err, Msg: "Translation failed", Code: http.StatusBadRequest}
+			return nil, &serverError{Error: err, Msg: "Translation failed", Code: http.StatusBadRequest}
 		}
 		history.Store(english, gopher)
 	}
@@ -44,42 +39,32 @@ func handleWord(rw http.ResponseWriter, req *http.Request) *serverError {
 		Word: &gopher,
 	})
 	if err != nil {
-		return &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
+		return nil, &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
 	}
 
-	_, err = rw.Write(data)
-	if err != nil {
-		return &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
-	}
-
-	return nil
+	return data, nil
 }
 
-func handleSentence(rw http.ResponseWriter, req *http.Request) *serverError {
-
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		return &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
-	}
+func handleSentence(body []byte) ([]byte, *serverError) {
 
 	var english, gopher string
-	err = json.Unmarshal(body, &struct {
+	err := json.Unmarshal(body, &struct {
 		Word *string `json:"english-sentence"`
 	}{
 		Word: &english,
 	})
 	if err != nil {
-		return &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
+		return nil, &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
 	}
 
 	if len(english) == 0 {
-		return &serverError{Error: nil, Msg: "No english sentence provided.", Code: http.StatusBadRequest}
+		return nil, &serverError{Error: nil, Msg: "No english sentence provided.", Code: http.StatusBadRequest}
 	}
-
-	if gopher, ok := history.Load(english); !ok {
+	var ok bool
+	if gopher, ok = history.Load(english); !ok {
 		gopher, err = TranslateSentence(english)
 		if err != nil {
-			return &serverError{Error: err, Msg: "Translation failed", Code: http.StatusBadRequest}
+			return nil, &serverError{Error: err, Msg: "Translation failed", Code: http.StatusBadRequest}
 		}
 		history.Store(english, gopher)
 	}
@@ -90,30 +75,22 @@ func handleSentence(rw http.ResponseWriter, req *http.Request) *serverError {
 		Word: &gopher,
 	})
 	if err != nil {
-		return &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
+		return nil, &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
 	}
 
-	_, err = rw.Write(data)
-	if err != nil {
-		return &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
-	}
-	return nil
+	return data, nil
 }
 
 var history History
 
-func handleHistory(rw http.ResponseWriter, req *http.Request) *serverError {
+func handleHistory(body []byte) ([]byte, *serverError) {
 
 	data, err := history.ToJSON()
 	if err != nil {
-		return &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
+		return nil, &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
 
 	}
-	_, err = rw.Write(data)
-	if err != nil {
-		return &serverError{Error: err, Msg: err.Error(), Code: http.StatusInternalServerError}
-	}
-	return nil
+	return data, nil
 }
 
 type serverError struct {
@@ -123,20 +100,35 @@ type serverError struct {
 }
 
 type serverHandler struct {
-	Handle func(w http.ResponseWriter, r *http.Request) *serverError
+	Handle func(body []byte) ([]byte, *serverError)
 	Method string
 }
 
-func (sh serverHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (sh serverHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
-	if r.Method != sh.Method {
-		http.Error(w, fmt.Sprintf("%s method not supported", r.Method), http.StatusMethodNotAllowed)
+	if req.Method != sh.Method {
+		http.Error(rw, fmt.Sprintf("%s method not supported", req.Method), http.StatusMethodNotAllowed)
 		return
 	}
 
-	if err := sh.Handle(w, r); err != nil {
-		http.Error(w, err.Msg, err.Code)
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
+	data, srvErr := sh.Handle(body)
+	if srvErr != nil {
+		http.Error(rw, srvErr.Msg, srvErr.Code)
+		return
+	}
+
+	_, err = rw.Write(data)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 }
 
 func initServer(port int) error {
