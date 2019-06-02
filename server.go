@@ -29,8 +29,14 @@ func handleWord(rw http.ResponseWriter, req *http.Request) *serverError {
 		return &serverError{Error: nil, Msg: "No english word provided.", Code: http.StatusBadRequest}
 	}
 
-	gopher, err = TranslateWord(english)
-	history.Store(english, gopher)
+	var ok bool
+	if gopher, ok = history.Load(english); !ok {
+		gopher, err = TranslateWord(english)
+		if err != nil {
+			return &serverError{Error: err, Msg: "Translation failed", Code: http.StatusBadRequest}
+		}
+		history.Store(english, gopher)
+	}
 
 	data, err := json.Marshal(struct {
 		Word *string `json:"gopher-word"`
@@ -70,8 +76,13 @@ func handleSentence(rw http.ResponseWriter, req *http.Request) *serverError {
 		return &serverError{Error: nil, Msg: "No english sentence provided.", Code: http.StatusBadRequest}
 	}
 
-	gopher, err = TranslateSentence(english)
-	history.Store(english, gopher)
+	if gopher, ok := history.Load(english); !ok {
+		gopher, err = TranslateSentence(english)
+		if err != nil {
+			return &serverError{Error: err, Msg: "Translation failed", Code: http.StatusBadRequest}
+		}
+		history.Store(english, gopher)
+	}
 
 	data, err := json.Marshal(struct {
 		Word *string `json:"gopher-sentence"`

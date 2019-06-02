@@ -26,6 +26,14 @@ func (h *History) Store(en string, gf string) {
 	h.data[en] = gf
 }
 
+// Load is a method that returns a translation if stored already or false if it's not
+func (h *History) Load(en string) (string, bool) {
+	h.guard.Lock()
+	defer h.guard.Unlock()
+	str, ok := h.data[en]
+	return str, ok
+}
+
 // GetData returns a copy of the stored translations
 func (h *History) GetData() Records {
 	h.guard.Lock()
