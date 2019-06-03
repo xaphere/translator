@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -32,39 +33,36 @@ func TranslateWord(word string) (string, error) {
 
 	word = strings.ToLower(word)
 
-	var builder strings.Builder
-	// handle 2.
-	if strings.Index(word, "xr") == 0 {
-		builder.WriteString("ge")
-		builder.WriteString(word)
-		return builder.String(), nil
-	}
-
-	vowelIdx := strings.IndexAny(word, "aeiou")
-	if vowelIdx == -1 {
-		vowelIdx = strings.Index(word, "y")
-	}
-	// handle 1.
+	prefix := "g"
+	vowelIdx := strings.Index(word, "xr")
 	if vowelIdx == 0 {
-		builder.WriteString("g")
-		builder.WriteString(word)
-		return builder.String(), nil
+		prefix = "ge"
+	} else {
+
+		vowelIdx = strings.IndexAny(word, "aeiou")
+		if vowelIdx == -1 {
+			vowelIdx = strings.Index(word, "y")
+		}
+
+		if vowelIdx >= 2 && word[vowelIdx-1:vowelIdx+1] == "qu" {
+			vowelIdx++
+		}
 	}
 
-	// handle 4.
-	if vowelIdx >= 2 && word[vowelIdx-1:vowelIdx+1] == "qu" {
-		vowelIdx++
-	}
-
-	// handle 3.
 	if vowelIdx == -1 {
-		// set to 0 to handle voweless words
-		vowelIdx = 0
+		return "", &TransError{Code: ErrInvalidWord, Err: fmt.Sprintf("'%s' has no vowels", word)}
 	}
 
+	var builder strings.Builder
+
+	if vowelIdx == 0 {
+		builder.WriteString(prefix)
+	}
 	builder.WriteString(word[vowelIdx:len(word)])
 	builder.WriteString(word[0:vowelIdx])
-	builder.WriteString("ogo")
+	if vowelIdx != 0 {
+		builder.WriteString("ogo")
+	}
 	return builder.String(), nil
 }
 
