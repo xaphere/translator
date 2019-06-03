@@ -132,9 +132,9 @@ func (sh serverHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func initServer(port int) error {
-	http.Handle("/word", serverHandler{Handle: handleWord, Method: "POST"})
-	http.Handle("/sentence", serverHandler{Handle: handleSentence, Method: "POST"})
-	http.Handle("/history", serverHandler{Handle: handleHistory, Method: "GET"})
+	http.Handle("/word", serverHandler{Handle: handleWord, Method: http.MethodPost})
+	http.Handle("/sentence", serverHandler{Handle: handleSentence, Method: http.MethodPost})
+	http.Handle("/history", serverHandler{Handle: handleHistory, Method: http.MethodGet})
 
 	log.Println("Start server on ", port)
 	strPort := fmt.Sprintf(":%d", port)

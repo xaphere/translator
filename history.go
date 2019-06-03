@@ -78,7 +78,7 @@ func (h *History) ToJSON() ([]byte, error) {
 		sortedData[idx] = entry{English: key, Gopher: data[key]}
 	}
 
-	return json.Marshal(struct {
+	return json.Marshal(&struct {
 		History []entry `json:"history"`
 	}{
 		History: sortedData,
